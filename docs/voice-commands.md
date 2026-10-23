@@ -33,7 +33,7 @@ Add a `voice` section to `settings.json` (environment variables in brackets):
 "voice": {
     "enable": true,
     "language": "",
-    "stt_url": "http://whisper:8080/inference",
+    "stt_url": "http://whisper:8178/inference",
     "stt_model": "",
     "stt_api_key": "",
     "stt_prompt": "",
@@ -55,66 +55,14 @@ The browser only allows microphone access when the dashboard is served over HTTP
 
 ## Setting Up a Whisper Server
 
-Any server with an OpenAI-compatible `/v1/audio/transcriptions` endpoint, or whisper.cpp's `/inference` endpoint, works. Two self-hosted options are shown below.
+The supported setup is [whisper.cpp](https://github.com/ggml-org/whisper.cpp) in Docker Compose, next to the dashboard. If you run things without Docker, you're on your own: any server with whisper.cpp's `/inference` endpoint or an OpenAI-compatible `/v1/audio/transcriptions` endpoint works, just point `stt_url` at it.
 
-### Option 1: whisper.cpp (recommended, lightest)
-
-[whisper.cpp](https://github.com/ggml-org/whisper.cpp) is a small C/C++ implementation of Whisper that runs well on a CPU.
-
-1. Download a model into a folder on the host. Quantized `q5_1` models are smaller and faster with little loss in accuracy:
-
-    ```bash
-    mkdir -p ./whisper-models
-    docker run --rm -v ./whisper-models:/models ghcr.io/ggml-org/whisper.cpp:main \
-      "download-ggml-model.sh base-q5_1 /models"
-    ```
-
-2. Run the server:
-
-    ```bash
-    docker run -d --name whisper --restart unless-stopped -p 8080:8080 \
-      -v ./whisper-models:/models ghcr.io/ggml-org/whisper.cpp:main \
-      "whisper-server --host 0.0.0.0 --port 8080 -m /models/ggml-base-q5_1.bin -l auto -t 2"
-    ```
-
-3. Check it works:
-
-    ```bash
-    curl http://localhost:8080/inference -F file=@some-recording.wav -F response_format=json
-    ```
-
-4. Set `"stt_url": "http://<whisper-host>:8080/inference"` in `settings.json` and restart the dashboard.
-
-The image's entrypoint is `bash -c`, so the command must be passed as a single quoted string as shown above. `-l auto` makes whisper.cpp detect the spoken language (its default is English only). When `language` is set in the dashboard, that value is used instead.
-
-### Option 2: Speaches (OpenAI-compatible API)
-
-[Speaches](https://speaches.ai) wraps faster-whisper behind an OpenAI-compatible API and can manage several models.
-
-```bash
-docker run -d --name speaches --restart unless-stopped -p 8000:8000 \
-  -v hf-hub-cache:/home/ubuntu/.cache/huggingface/hub \
-  ghcr.io/speaches-ai/speaches:latest-cpu
-
-# Download a model once
-curl -X POST http://localhost:8000/v1/models/Systran/faster-whisper-base
-```
-
-Then set:
-
-```json
-"stt_url": "http://<speaches-host>:8000/v1/audio/transcriptions",
-"stt_model": "Systran/faster-whisper-base"
-```
-
-### Docker Compose
-
-Running whisper.cpp next to the dashboard. The model is downloaded on the first start and kept in the volume:
+The model is downloaded on the first start and kept in the volume:
 
 ```yaml
 services:
   dashboard:
-    image: ghcr.io/chocomeow/vocard-dashboard:latest
+    image: ghcr.io/michalhubert/vocard-dashboard:latest
     environment:
       VOICE_STT_URL: http://whisper:8178/inference
       VOICE_STT_PROMPT: "<artist and song names Whisper misspells>"
@@ -132,7 +80,7 @@ services:
       - vocard
     restart: unless-stopped
     volumes:
-      - /opt/docker/vocard/whisper-models:/models
+      - ./whisper-models:/models
 
 networks:
   vocard:

@@ -11,6 +11,7 @@ on:
             - "**.md"
 
 permissions:
+    contents: read
     packages: write
 
 jobs:
@@ -19,6 +20,10 @@ jobs:
 
         steps:
             - uses: actions/checkout@v4
+
+            # Image names must be lowercase, and the repository name can contain capitals
+            - name: Set image name
+              run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
@@ -34,7 +39,7 @@ jobs:
               id: meta
               uses: docker/metadata-action@v5
               with:
-                  images: ghcr.io/chocomeow/vocard-dashboard
+                  images: ${{ env.IMAGE_NAME }}
                   tags: |
                       # For version tags (v1.2.3)
                       type=ref,event=tag

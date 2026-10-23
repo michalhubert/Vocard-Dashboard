@@ -12,6 +12,7 @@
         "stt_url": "",
         "stt_model": "",
         "stt_api_key": "",
+        "stt_prompt": "",
         "browser_recognition": false
     },
     "logging": {

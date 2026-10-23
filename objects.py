@@ -356,6 +356,7 @@ class Settings:
         self.voice_stt_url: Optional[str] = voice.get("stt_url") or os.getenv("VOICE_STT_URL")
         self.voice_stt_model: Optional[str] = voice.get("stt_model") or os.getenv("VOICE_STT_MODEL")
         self.voice_stt_api_key: Optional[str] = voice.get("stt_api_key") or os.getenv("VOICE_STT_API_KEY")
+        self.voice_stt_prompt: Optional[str] = voice.get("stt_prompt") or os.getenv("VOICE_STT_PROMPT")
         self.voice_browser_recognition: bool = voice.get("browser_recognition", os.getenv("VOICE_BROWSER_RECOGNITION", "false").lower() == "true")
 
     @property

@@ -6,6 +6,7 @@ const VOICE_SPEECH_THRESHOLD = 0.015 // RMS level treated as speech
 const VOICE_SILENCE_TIMEOUT = 1200 // Stop recording after this much silence following speech (ms)
 const VOICE_NO_SPEECH_TIMEOUT = 5000 // Give up if nothing was said (ms)
 const VOICE_MAX_DURATION = 10000 // Hard limit for a single command (ms)
+const VOICE_PLAY_CALLBACK = "voice-play" // getTracks callback for songs requested by voice
 
 const VOICE_COMMANDS = [
     {
@@ -53,8 +54,10 @@ const VOICE_COMMANDS = [
         run: (player, match) => player.seekTo(player.currentPosition - (parseInt(match[1]) || 10) * 1000),
     },
     {
-        pattern: /^(?:play|queue|add)(?: (?:the )?song)? (.+?)(?: to (?:the )?queue)?$/,
-        run: (player, match) => player.send({ op: "searchAndPlay", query: match[1], type: "addToQueue" }),
+        // Song names may be in any language. "plej"/"pley" is how Whisper sometimes spells "play"
+        // when it detects the clip as Polish because of a Polish song name.
+        pattern: /^(?:play|plej|pley|queue|add)(?: (?:the )?song)? (.+?)(?: to (?:the )?queue)?$/,
+        run: (player, match) => playFirstFromVoice(player, match[1]),
     },
     {
         pattern: /^search(?: for)? (.+)$/,
@@ -65,6 +68,18 @@ const VOICE_COMMANDS = [
 
 function setVoiceVolume(player, volume) {
     player.send({ op: "updateVolume", volume: Math.max(0, Math.min(100, volume)) })
+}
+
+// Look the song up the same way the search bar does, then queue only the best match
+function playFirstFromVoice(player, query) {
+    player.send({ op: "getTracks", query: query, callback: VOICE_PLAY_CALLBACK })
+}
+
+function handleVoicePlayResult(player, tracks) {
+    if (!tracks.length) {
+        return player.tm.showToast("error", localeTexts.voice.noResults)
+    }
+    player.send({ op: "addTracks", tracks: [tracks[0]], type: "addToQueue" })
 }
 
 function searchFromVoice(query) {
@@ -286,7 +301,8 @@ class VoiceCommand {
         const transcript = text.trim()
         const command = transcript
             .toLowerCase()
-            .replace(/[.,!?;:"]+/g, " ")
+            .replace(/\[[^\]]*]|\([^)]*\)/g, " ") // Whisper annotations like [BLANK_AUDIO] or (music)
+            .replace(/[.,!?;:"„”]+/g, " ")
             .replace(/\s+/g, " ")
             .trim()
 

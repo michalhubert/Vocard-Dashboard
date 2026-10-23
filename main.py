@@ -177,7 +177,8 @@ async def voice_transcribe(user: User):
         audio.content_type or "audio/wav",
         model=SETTINGS.voice_stt_model,
         language=SETTINGS.voice_language,
-        api_key=SETTINGS.voice_stt_api_key
+        api_key=SETTINGS.voice_stt_api_key,
+        prompt=SETTINGS.voice_stt_prompt
     )
     if text is None:
         return jsonify({"error": "Voice recognition failed."}), 502

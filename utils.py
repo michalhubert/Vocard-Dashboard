@@ -214,7 +214,8 @@ async def transcribe_audio(
     content_type: str,
     model: Optional[str] = None,
     language: Optional[str] = None,
-    api_key: Optional[str] = None
+    api_key: Optional[str] = None,
+    prompt: Optional[str] = None
 ) -> Optional[str]:
     # Send audio to a speech-to-text server and return the recognized text.
     form = aiohttp.FormData()
@@ -224,6 +225,9 @@ async def transcribe_audio(
         form.add_field("model", model)
     if language:
         form.add_field("language", language.split("-")[0].lower())
+    if prompt:
+        # Whisper copies the spelling of words it sees in the prompt, e.g. artist names
+        form.add_field("prompt", prompt)
 
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
     async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session:

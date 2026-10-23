@@ -24,7 +24,7 @@ Vocard Dashboard is a web-based user interface that allows users to control the 
 Please see the [Setup Page](https://docs.vocard.xyz/latest/dashboard/setup) in the docs to run this bot yourself!
 
 ## Voice Commands
-Control playback by voice with the microphone button in the header: *"pause"*, *"skip"*, *"volume 40"*, *"play Bohemian Rhapsody"* and more. Speech is transcribed by a server you point the dashboard at, for example a self-hosted [whisper.cpp](https://github.com/ggml-org/whisper.cpp) instance, so the dashboard itself stays lightweight. See the [Voice Commands guide](docs/voice-commands.md) for setup.
+Control playback by voice with the microphone button in the header: *"pause"*, *"skip"*, *"volume 40"*, *"play <song>"* and more. Speech is transcribed by a server you point the dashboard at, for example a self-hosted [whisper.cpp](https://github.com/ggml-org/whisper.cpp) instance, so the dashboard itself stays lightweight. See the [Voice Commands guide](docs/voice-commands.md) for setup.
 
 ## Need Help?
 Join the [Vocard Support Discord](https://discord.gg/wRCgB7vBQv) for help or questions.

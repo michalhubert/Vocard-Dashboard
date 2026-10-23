@@ -18,10 +18,12 @@ The dashboard itself does not run any speech model, so it stays lightweight. The
 | *volume up / down*, *louder*, *quieter*, *turn it up / down* | Change the volume by 10 |
 | *forward*, *skip forward 30 seconds* | Seek forward (10 seconds by default) |
 | *rewind*, *rewind 30 seconds* | Seek backward (10 seconds by default) |
-| *play &lt;song&gt;*, *add &lt;song&gt; to the queue* | Search and add the song to the queue |
+| *play &lt;song&gt;*, *add &lt;song&gt; to the queue* | Look the song up like the search bar and add only the first result to the queue |
 | *search &lt;query&gt;* | Put the query into the search bar |
 
-Anything that is not recognized as a command is put into the search bar. Command words are English only.
+Anything that is not recognized as a command is put into the search bar.
+
+Command words are always English, but song and artist names can be in any language. That needs a multilingual model, see [Song Names in Other Languages](#song-names-in-other-languages).
 
 ## Configuration
 
@@ -34,6 +36,7 @@ Add a `voice` section to `settings.json` (environment variables in brackets):
     "stt_url": "http://whisper:8080/inference",
     "stt_model": "",
     "stt_api_key": "",
+    "stt_prompt": "",
     "browser_recognition": false
 }
 ```
@@ -45,6 +48,7 @@ Add a `voice` section to `settings.json` (environment variables in brackets):
 | `stt_url` (`VOICE_STT_URL`) | Full URL of the transcription endpoint. |
 | `stt_model` (`VOICE_STT_MODEL`) | Model name sent to the server. Required by OpenAI-compatible servers, ignored by whisper.cpp. |
 | `stt_api_key` (`VOICE_STT_API_KEY`) | Optional bearer token. |
+| `stt_prompt` (`VOICE_STT_PROMPT`) | Optional vocabulary hint sent with every clip. Whisper copies the spelling of words it sees here, so list artist and song names it gets wrong, separated by periods. |
 | `browser_recognition` (`VOICE_BROWSER_RECOGNITION`) | Use the browser's built-in recognition when no `stt_url` is set. Off by default because Chrome sends the audio to Google, and Firefox does not support it. |
 
 The browser only allows microphone access when the dashboard is served over HTTPS or from `localhost`.
@@ -105,25 +109,36 @@ Then set:
 
 ### Docker Compose
 
-Running the dashboard and whisper.cpp together:
+Running whisper.cpp next to the dashboard. The model is downloaded on the first start and kept in the volume:
 
 ```yaml
 services:
   dashboard:
     image: ghcr.io/chocomeow/vocard-dashboard:latest
     environment:
-      VOICE_STT_URL: http://whisper:8080/inference
+      VOICE_STT_URL: http://whisper:8178/inference
+      VOICE_STT_PROMPT: "<artist and song names Whisper misspells>"
+    networks:
+      - vocard
     # ...the rest of your dashboard config
 
   whisper:
+    container_name: whisper
     image: ghcr.io/ggml-org/whisper.cpp:main
-    command: "whisper-server --host 0.0.0.0 --port 8080 -m /models/ggml-base-q5_1.bin -l auto -t 2"
-    volumes:
-      - ./whisper-models:/models
+    command: ["[ -f /models/ggml-small-q5_1.bin ] || ./models/download-ggml-model.sh small-q5_1 /models; exec whisper-server --host 0.0.0.0 --port 8178 -m /models/ggml-small-q5_1.bin -l auto -t 2"]
+    expose:
+      - 8178
+    networks:
+      - vocard
     restart: unless-stopped
+    volumes:
+      - /opt/docker/vocard/whisper-models:/models
+
+networks:
+  vocard:
 ```
 
-There's no need to publish the whisper port when only the dashboard talks to it.
+There's no need to publish the whisper port when only the dashboard talks to it. Leave `language` empty in the dashboard, otherwise it overrides `-l auto`.
 
 ## Choosing a Model
 
@@ -133,7 +148,17 @@ There's no need to publish the whisper port when only the dashboard talks to it.
 | `base` | ~57 MB | Good balance for voice commands. |
 | `small` | ~181 MB | Noticeably better with names, slower on weak CPUs. |
 
-Models without `.en` in the name are multilingual and needed for automatic language detection. If you only speak English, the `.en` variants (e.g. `base.en-q5_1`) are slightly more accurate. With automatic detection, very short commands are occasionally detected as the wrong language; setting `language` avoids that.
+Models without `.en` in the name are multilingual. If you only speak English, the `.en` variants (e.g. `base.en-q5_1`) are slightly more accurate.
+
+### Song Names in Other Languages
+
+An `.en` model, or `-l en`, only writes English words: non-English names come out as English-sounding nonsense, and the search can't find it. To use English commands with Polish (or other) song names:
+
+1. Use a multilingual model, `small-q5_1` or larger. `base` and `tiny` often mangle non-English names.
+2. Run whisper.cpp with `-l auto` and leave `language` empty in the dashboard.
+3. Put names Whisper keeps misspelling into `stt_prompt`. Unusual spellings can't be guessed from audio alone, but Whisper copies them from the prompt.
+
+When a clip is detected as Polish because most of it is a Polish name, Whisper sometimes writes *play* as *plej*. The dashboard accepts that spelling.
 
 ### Resource Usage
 

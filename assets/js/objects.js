@@ -429,6 +429,10 @@ const methods = {
 
         if (tracks == null) return;
 
+        if (callback === VOICE_PLAY_CALLBACK) {
+            return handleVoicePlayResult(player, tracks);
+        }
+
         const region = $(`#${callback}`);
 
         if (callback === "search-result-tracks") {

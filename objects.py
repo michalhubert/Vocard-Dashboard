@@ -8,7 +8,9 @@ from geoip2 import records
 
 from typing import (
     Optional,
+    Mapping,
     Dict,
+    List,
     Any,
 )
 
@@ -20,17 +22,17 @@ from utils import (
 )
 
 class Asset:
-    def __init__(self, id: str, key: str):
-        self.key: str = key
+    def __init__(self, id: str, key: Optional[str]):
+        self.key: Optional[str] = key
         self.url: str = f"https://cdn.discordapp.com/avatars/{id}/{key}.webp"
 
 class User:
     def __init__(self, pool, data: Dict):
-        self.id: str = data.get("id")
-        self.name: str = data.get("global_name")
+        self.id: str = data["id"]
+        self.name: Optional[str] = data.get("global_name")
         self.avatar: Asset = Asset(self.id, data.get("avatar"))
-        self.access_token: str = data.get("access_token")
-        self.country: records.Country = data.get("country") 
+        self.access_token: str = data["access_token"]
+        self.country: Optional[records.Country] = data.get("country")
         
         self.bot: Optional[Bot] = None
         self.guild: Optional[Guild] = None
@@ -58,7 +60,7 @@ class User:
             return
         
         if method == "updateSelectedBot":
-            bot = BotPool.get(payload.get("botId"))
+            bot = BotPool.get(str(payload.get("botId")))
             if not bot:
                 return await self.send({"op": "botNotFound"})
 
@@ -66,7 +68,7 @@ class User:
 
         elif method == "getMutualGuilds":
             try:
-                resp: list[dict] = await requests_api(f'{DISCORD_API_BASE_URL}/users/@me/guilds', headers={'Authorization': f'Bearer {self.access_token}'})
+                resp: List[Dict] = await requests_api(f'{DISCORD_API_BASE_URL}/users/@me/guilds', headers={'Authorization': f'Bearer {self.access_token}'})
                 guilds = {
                     guild["id"]: {
                         "avatar": f"https://cdn.discordapp.com/icons/{guild['id']}/{guild['icon']}.webp" if guild.get('icon') else None,
@@ -122,11 +124,11 @@ class User:
 
     @property
     def is_connected(self) -> bool:
-        return self._websocket
+        return self._websocket is not None
     
     @property
     def language_code(self) -> str:
-        language = get_official_languages(self.country.iso_code if self.country else "US")
+        language = get_official_languages((self.country.iso_code if self.country else None) or "US")
         return language[0] if language and language[0] in LANGUAGES else list(LANGUAGES.keys())[0]
         
     def __repr__(self) -> str:
@@ -176,11 +178,11 @@ class Bot:
     def __init__(
         self, 
         pool,
-        headers: Dict[str, str],
+        headers: Mapping[str, str],
         websocket: quart.Websocket
     ):  
-        self.id: str = headers.get("User-Id")
-        self._websocket: quart.Websocket = websocket
+        self.id: str = headers.get("User-Id", "")
+        self._websocket: Optional[quart.Websocket] = websocket
         self._pool: BotPool = pool
 
         self._guilds: Dict[str, Guild] = {}
@@ -208,16 +210,15 @@ class Bot:
             if not method:
                 continue
             
+            guild: Optional[Guild] = None
             if (guild_id := data.get("guildId")):
-                guild: Guild = self.get_guild(guild_id)
-                if not guild:
-                    guild: Guild = self.create_guild(guild_id)
+                guild = self.get_guild(str(guild_id)) or self.create_guild(str(guild_id))
 
                 if not guild.bot:
                     guild.bot = self
             
                 if method == "updateGuild":
-                    user: User = UserPool.get(user_id=data.get("user", {}).get("userId"))
+                    user = UserPool.get(user_id=data.get("user", {}).get("userId"))
                     if user:
                         await guild.add_user(user) if data.get("isJoined") else await guild.remove_user(user)
                 
@@ -230,21 +231,19 @@ class Bot:
                     continue
                 
                 elif method == "initPlayer":
-                    user: User = UserPool.get(user_id=data.get("userId"))
+                    user = UserPool.get(user_id=data.get("userId"))
                     if user:
                         await guild.add_user(user, init_player=False)
 
                 elif method == "playerClose":
-                    guild = self._guilds.get(data.get("guildId"))
-                    if guild:
-                        await guild.remove_all_user()
+                    await guild.remove_all_user()
 
             if user_id := data.get("userId"):
                 user = UserPool.get(user_id=user_id)
                 if user:
                     await user.send(data)
                 
-            else:
+            elif guild:
                 await guild.broadcast(data)
 
     async def disconnect(self) -> None:
@@ -284,24 +283,25 @@ class BotPool:
     
     @classmethod
     async def create(cls, bot_id: str, websocket: quart.Websocket) -> None:
+        bot: Optional[Bot] = None
         try:
             header = websocket.headers
             
-            bot: Bot = cls.get(bot_id)
+            bot = cls.get(bot_id)
             if bot:
                 if bot.is_connected:
                     await bot.disconnect()
                 bot._websocket = websocket
             else:  
-                bot = Bot(cls, header, websocket)
-                cls._bots[bot_id] = bot
+                bot = cls._bots[bot_id] = Bot(cls, header, websocket)
             
             LOGGER.info(f"Bot ({bot.id}) has been connected!")
 
             received = asyncio.create_task(bot._listen())
             await asyncio.gather(received)
         except:
-            await bot.disconnect()
+            if bot:
+                await bot.disconnect()
             raise
     
     @classmethod
@@ -323,7 +323,7 @@ class UserPool:
         return user
     
     @classmethod
-    def get(cls, *, user_id: str = None, token: str = None) -> Optional[User]:
+    def get(cls, *, user_id: Optional[str] = None, token: Optional[str] = None) -> Optional[User]:
         if user_id:
             return cls._users.get(user_id)
         
@@ -332,22 +332,43 @@ class UserPool:
                 if user.access_token == token:
                     return user
 
+        return None
+
 class Settings:
     def __init__(self, settings_file: str = "settings.json"):
         self.settings_file = settings_file
         self.settings = self.load()
 
-        self.host: str = self.get_setting("host") or os.getenv("HOST")
-        self.port: int = self.get_setting("port") or os.getenv("PORT", 5000)
-        self.password: int = self.get_setting("password") or os.getenv("PASSWORD")
-        self.client_id: str = self.get_setting("client_id") or os.getenv("CLIENT_ID")
-        self.client_secret_id: str = self.get_setting("client_secret_id") or os.getenv("CLIENT_SECRET_ID")
-        self.secret_key: str = self.get_setting("secret_key") or os.getenv("SECRET_KEY")
-        self.redirect_url: str = self.get_setting("redirect_url") or os.getenv("REDIRECT_URL")
+        self.host: Optional[str] = self.get_setting("host") or os.getenv("HOST")
+        self.port: int = int(self.get_setting("port") or os.getenv("PORT", 5000))
+        self.password: Optional[str] = self.get_setting("password") or os.getenv("PASSWORD")
+        self.client_id: Optional[str] = self.get_setting("client_id") or os.getenv("CLIENT_ID")
+        self.client_secret_id: Optional[str] = self.get_setting("client_secret_id") or os.getenv("CLIENT_SECRET_ID")
+        self.secret_key: Optional[str] = self.get_setting("secret_key") or os.getenv("SECRET_KEY")
+        self.redirect_url: Optional[str] = self.get_setting("redirect_url") or os.getenv("REDIRECT_URL")
 
-        self.logging: Dict[str, Any] = self.get_setting("logging")
+        self.logging: Dict[str, Any] = self.get_setting("logging") or {}
 
-    def get_setting(self, key: str, default: Optional[str] = None) -> Optional[str]:
+        voice: Dict[str, Any] = self.get_setting("voice") or {}
+        self.voice_enable: bool = voice.get("enable", os.getenv("VOICE_ENABLE", "true").lower() == "true")
+        # Empty means the speech-to-text server detects the spoken language itself
+        self.voice_language: Optional[str] = voice.get("language") or os.getenv("VOICE_LANGUAGE")
+        self.voice_stt_url: Optional[str] = voice.get("stt_url") or os.getenv("VOICE_STT_URL")
+        self.voice_stt_model: Optional[str] = voice.get("stt_model") or os.getenv("VOICE_STT_MODEL")
+        self.voice_stt_api_key: Optional[str] = voice.get("stt_api_key") or os.getenv("VOICE_STT_API_KEY")
+        self.voice_browser_recognition: bool = voice.get("browser_recognition", os.getenv("VOICE_BROWSER_RECOGNITION", "false").lower() == "true")
+
+    @property
+    def voice_client_config(self) -> Dict[str, Any]:
+        """Voice settings that are safe to expose to the browser."""
+        return {
+            # Without a speech-to-text server the browser's online recognition is only used when explicitly allowed
+            "enabled": bool(self.voice_enable and (self.voice_stt_url or self.voice_browser_recognition)),
+            "useServer": bool(self.voice_stt_url),
+            "language": self.voice_language
+        }
+
+    def get_setting(self, key: str, default: Any = None) -> Any:
         return self.settings.get(key, default)
 
     def load(self) -> Dict:

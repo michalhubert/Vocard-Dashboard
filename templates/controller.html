@@ -41,12 +41,12 @@
         </div>
         <div class="position non-essential">
             <span id="start-time">00:00</span>
-            <input type="range" class="position-bar" id="position-bar" min="1" max="500" value="0" />
+            <input type="range" class="position-bar" id="position-bar" aria-label="{{ _('Position') }}" min="1" max="500" value="0" />
             <span id="end-time">00:00</span>
         </div>
     </div>
     <div class="right important">
-        <input type="range" class="volume-bar non-essential" id="volume-bar" min="0" max="100" value="0" />
+        <input type="range" class="volume-bar non-essential" id="volume-bar" aria-label="{{ _('Volume') }}" min="0" max="100" value="0" />
         <div class="btn non-essential">
             <span class="material-symbols-outlined clickable">volume_up</span>
             <p class="label">{{ _("Volume") }}</p>

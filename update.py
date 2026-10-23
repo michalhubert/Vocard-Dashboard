@@ -38,7 +38,7 @@ def download_file(version=None):
         version (str): the version to download. If None, download the latest version.
 
     Returns:
-        BytesIO: the downloaded zip file.
+        requests.Response: the downloaded zip file.
     """
     version = version if version else check_version()
     print(f"Downloading Vocard Dashboard version: {version}")
@@ -49,17 +49,17 @@ def download_file(version=None):
     print("Download Completed")
     return response
 
-def install(response, version):
+def install(response: requests.Response, version: str):
     """Install the downloaded version of the project.
 
     Args:
-        response (BytesIO): the downloaded zip file.
+        response (requests.Response): the downloaded zip file.
         version (str): the version to install.
     """
     user_input = input(f"{bcolors.WARNING}--------------------------------------------------------------------------\n"
-                           "Note: Before proceeding, please ensure that there are no personal files or\n" \
-                           "sensitive information in the directory you're about to delete. This action\n" \
-                           "is irreversible, so it's important to double-check that you're making the \n" \
+                           "Note: Before proceeding, please ensure that there are no personal files or\n"
+                           "sensitive information in the directory you're about to delete. This action\n"
+                           "is irreversible, so it's important to double-check that you're making the \n"
                            f"right decision. {bcolors.ENDC} Continue with caution? (Y/n) ")
         
     if user_input.lower() in ["y", "yes"]:

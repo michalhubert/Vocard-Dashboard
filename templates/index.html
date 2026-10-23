@@ -38,8 +38,10 @@
             referrerpolicy="no-referrer"
         />
 
+        <meta name="voice-config" content='{{ voice | tojson }}' />
         <script>
             // const userId = "{{ user.id }}";
+            const voiceConfig = JSON.parse(document.querySelector('meta[name="voice-config"]').content);
             const localeTexts = {
                 cancel: "{{ _('Cancel') }}",
                 confirm: "{{ _('Confirm') }}",
@@ -89,6 +91,12 @@
                         toggleRepeat: "{{ _('Toggle repeat mode') }}",
                         toggleShuffle: "{{ _('Toggle shuffle') }}",
                     },
+                },
+                voice: {
+                    heard: "{{ _('Heard: {0}') }}",
+                    notHeard: "{{ _('I did not hear anything. Try again.') }}",
+                    micDenied: "{{ _('Microphone access was denied.') }}",
+                    transcribeError: "{{ _('Voice recognition failed. Please try again.') }}",
                 },
                 track: {
                     track: "{{ _('Track') }}",
@@ -222,6 +230,7 @@
         <script type="text/javascript" src="{{ url_for('static', filename='js/utils.min.js') }}"></script>
         <script type="text/javascript" src="{{ url_for('static', filename='js/websocket.min.js') }}"></script>
         <script type="text/javascript" src="{{ url_for('static', filename='js/objects.min.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/voice.min.js') }}"></script>
         <script type="text/javascript" src="{{ url_for('static', filename='js/action.min.js') }}"></script>
         <script type="text/javascript" src="{{ url_for('static', filename='js/transformer.min.js') }}"></script>
 

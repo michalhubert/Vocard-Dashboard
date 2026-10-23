@@ -211,9 +211,9 @@ function decode(trackId, requester, sourceDecoders = {}) {
 
     const source = reader.readUtf();
 
-    let sourceSpecificFields = {};
+    // Source specific fields are unused, but must be read to reach the position field
     if (source in decoders) {
-        sourceSpecificFields = decoders[source](reader);
+        decoders[source](reader);
     }
 
     const position = reader.readLong();

@@ -163,7 +163,10 @@ def compile_scss() -> None:
 
     LOGGER.info("Finished compiling SCSS files.")
 
-def check_version(current_version: str) -> bool:
+def check_version(current_version: Optional[str]) -> bool:
+    if not current_version:
+        return False
+
     current_version = current_version.replace("v", "")
     def version_tuple(version: str):
         main_version, *beta = version.replace('b', '.').split('.')
@@ -182,7 +185,7 @@ def _check_country_with_ip_sync(address: str) -> Optional[records.Country]:
         except errors.AddressNotFoundError:
             return None
 
-async def requests_api(url: str, method: str = 'GET', data: dict = None, headers: dict = None) -> dict:
+async def requests_api(url: str, method: str = 'GET', data: Optional[dict] = None, headers: Optional[dict] = None) -> Any:
     LOGGER.debug(f"Making {method} request to {url} with data: {data} and headers: {headers}")
     async with aiohttp.ClientSession() as session:
         try:
@@ -202,6 +205,38 @@ async def requests_api(url: str, method: str = 'GET', data: dict = None, headers
             return json_response
         except Exception as e:
             LOGGER.error(f"Error during API request to {url}: {e}")
+            return None
+
+async def transcribe_audio(
+    url: str,
+    audio: bytes,
+    filename: str,
+    content_type: str,
+    model: Optional[str] = None,
+    language: Optional[str] = None,
+    api_key: Optional[str] = None
+) -> Optional[str]:
+    # Send audio to a speech-to-text server and return the recognized text.
+    form = aiohttp.FormData()
+    form.add_field("file", audio, filename=filename, content_type=content_type)
+    form.add_field("response_format", "json")
+    if model:
+        form.add_field("model", model)
+    if language:
+        form.add_field("language", language.split("-")[0].lower())
+
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session:
+        try:
+            async with session.post(url, data=form, headers=headers) as resp:
+                if resp.status != 200:
+                    LOGGER.error(f"Speech-to-text server returned {resp.status}: {await resp.text()}")
+                    return None
+
+                data = await resp.json(content_type=None)
+                return (data.get("text") or "").strip()
+        except Exception as e:
+            LOGGER.error(f"Error during speech-to-text request to {url}: {e}")
             return None
 
 async def check_country_with_ip(address: str) -> Optional[records.Country]:

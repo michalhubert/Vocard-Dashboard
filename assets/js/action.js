@@ -22,7 +22,7 @@ function backToLastPage() {
     let lastPage = pageStack.pop()
     let prePage = pageStack[pageStack.length - 1]
 
-    if (prePage != undefined) {
+    if (prePage != null) {
         changePage(prePage.pageId)
     } else {
         changePage("main-page")
@@ -121,11 +121,11 @@ function changePage(page, stack = false, removeAfterPop = true) {
         }
     }
 
-    if (stack && pageStack[pageStack.length - 1]?.pageId != page) {
+    if (stack && pageStack[pageStack.length - 1]?.pageId !== page) {
         pageStack.push({ pageId: page, removeAfterPop })
     }
 
-    if (page == "main-page") {
+    if (page === "main-page") {
         while (pageStack.length > 0) {
             const lastPage = pageStack.pop()
             if (lastPage.removeAfterPop) {
@@ -571,6 +571,7 @@ function buildShortcutsModalHtml() {
 
 $(document).ready(function () {
     const player = new Player()
+    initVoiceCommands(player)
 
     $(document).keydown(function (e) {
         const $target = $(e.target)
@@ -645,7 +646,7 @@ $(document).ready(function () {
 
     $(".main-container .sections").slice(1).hide()
     changePage("bot-not-found", false, false)
-    if (localStorage.getItem("theme") == "light") {
+    if (localStorage.getItem("theme") === "light") {
         $("html").addClass("light-theme")
         $("#user-settings-page .settings-row input[data-id='toggle-dark-mode']").prop("checked", false)
     }
@@ -740,7 +741,7 @@ $(document).ready(function () {
         $("#search-loader").fadeIn(200)
         typingTimer = setTimeout(function () {
             let input = $("#search-query").val()
-            if (input.replace(/\s+/g, "") != "") {
+            if (input.replace(/\s+/g, "") !== "") {
                 player.send({
                     op: "getTracks",
                     query: input,
@@ -817,16 +818,16 @@ $(document).ready(function () {
             const $btn = $target.closest(".menu-btn")
             if ($btn.length) {
                 let pageName = $btn.attr("id").replace("menu-", "")
-                if (pageName == "settings-page") {
+                if (pageName === "settings-page") {
                     return build_server_page()
                 }
 
-                if (pageName == "explore-page") {
+                if (pageName === "explore-page") {
                     return buildExplorePage()
                 }
 
-                if (pageName == "create-playlist") {
-                    if (player.selectedBot == undefined) {
+                if (pageName === "create-playlist") {
+                    if (player.selectedBot == null) {
                         return player.tm.showToast("error", localeTexts.errors.noPlayerError)
                     }
                     return $("html").append(
@@ -899,7 +900,7 @@ $(document).ready(function () {
                 $(".main-container").append(buildPlaylistHtml(dataId, playlist, "user-playlist"))
                 changePage(pageId, true, false)
 
-                if (playlist.tracks == undefined) {
+                if (playlist.tracks == null) {
                     player.send({ op: "getPlaylist", playlistId: dataId })
                 }
             }
@@ -927,7 +928,7 @@ $(document).ready(function () {
             const cardType = $card.data("type")
             const clickedBtn = $target.hasClass("material-symbols-outlined")
 
-            if (cardType == "track") {
+            if (cardType === "track") {
                 if (clickedBtn) {
                     player.send({
                         op: "addTracks",
@@ -937,7 +938,7 @@ $(document).ready(function () {
                 } else {
                     buildTrackPage(cardId)
                 }
-            } else if (cardType == "playlist") {
+            } else if (cardType === "playlist") {
                 const href = $card.data("href")
 
                 if (clickedBtn) {
@@ -976,7 +977,7 @@ $(document).ready(function () {
             if ($target.hasClass("track-more")) {
                 buildContextMenu(e, ["playNow", "playNext", "AddToQueue", "getLyrics", "playlistAddTrack", "copyLink"], options)
             } else if ($target.hasClass("track-play")) {
-                if (options.selectedTrackId != undefined) {
+                if (options.selectedTrackId != null) {
                     player.send({
                         op: "addTracks",
                         tracks: [options.selectedTrackId],
@@ -1023,7 +1024,7 @@ $(document).ready(function () {
                 }
 
                 if ($target.is("span")) {
-                    if (playlistType == "playlist" || ["link", "share"].includes(player.playlists[options.selectedPlaylistId]?.type)) {
+                    if (playlistType === "playlist" || ["link", "share"].includes(player.playlists[options.selectedPlaylistId]?.type)) {
                         return buildContextMenu(e, ["playNow", "playNext", "AddToQueue", "getRecommendation", "getLyrics", "playlistAddTrack", "copyLink"], options)
                     } else {
                         return buildContextMenu(
@@ -1059,7 +1060,7 @@ $(document).ready(function () {
                     break
 
                 case "like":
-                    if (currentTrack != undefined) {
+                    if (currentTrack != null) {
                         if ($target.hasClass("filled")) {
                             player.send({
                                 op: "updatePlaylist",
@@ -1338,7 +1339,7 @@ $(document).ready(function () {
                             op: "updatePlaylist",
                             type: "createPlaylist",
                             playlistName: result.playlistName,
-                            playlistUrl: result.playlistType == "online" ? result.playlistUrl : "",
+                            playlistUrl: result.playlistType === "online" ? result.playlistUrl : "",
                         })
 
                     case "renamePlaylist":
@@ -1524,7 +1525,7 @@ $(document).ready(function () {
                 }
                 break
             case "context-playlist-rename":
-                if (player.selectedBot == undefined) {
+                if (player.selectedBot == null) {
                     return player.tm.showToast("error", localeTexts.errors.noPlayerError)
                 }
                 $("html").append(
@@ -1558,7 +1559,7 @@ $(document).ready(function () {
                 )
                 break
             case "context-playlist-remove":
-                if (player.selectedBot == undefined) {
+                if (player.selectedBot == null) {
                     return player.tm.showToast("error", localeTexts.errors.noPlayerError)
                 }
                 $("html").append(
@@ -1584,7 +1585,7 @@ $(document).ready(function () {
                 )
                 break
             case "context-playlist-create":
-                if (player.selectedBot == undefined) {
+                if (player.selectedBot == null) {
                     return player.tm.showToast("error", localeTexts.errors.noPlayerError)
                 }
                 op = {
@@ -1622,10 +1623,10 @@ $(document).ready(function () {
             const cardId = $card.data("id")
             const cardType = $card.data("type")
 
-            if (cardType == "track") {
+            if (cardType === "track") {
                 options = { selectedTrackId: cardId }
                 menuItems = ["playNow", "playNext", "AddToQueue", "getRecommendation", "getLyrics", "playlistAddTrack", "copyLink"]
-            } else if (cardType == "playlist") {
+            } else if (cardType === "playlist") {
                 options = { selectedplaylisthref: $card.data("href") }
                 menuItems = ["AddToQueue", "playlistCreate", "copyLink"]
             }

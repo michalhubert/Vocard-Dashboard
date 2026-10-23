@@ -6,6 +6,14 @@
     "client_secret_id": "",
     "secret_key": "",
     "redirect_url": "http://127.0.0.1:8000/callback",
+    "voice": {
+        "enable": true,
+        "language": "",
+        "stt_url": "",
+        "stt_model": "",
+        "stt_api_key": "",
+        "browser_recognition": false
+    },
     "logging": {
         "file": {
             "path": "./logs",

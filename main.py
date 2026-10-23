@@ -40,7 +40,8 @@ from utils import (
     download_geoip_db,
     check_country_with_ip,
     check_version,
-    setup_logging
+    setup_logging,
+    transcribe_audio
 )
 
 SETTINGS: Settings = Settings()
@@ -79,7 +80,7 @@ async def setup():
         if not lang.startswith(".")
     ]
     for lang_code in lang_codes:
-        LANGUAGES[lang_code] = {"name": Locale.parse(lang_code).get_display_name(lang_code).capitalize()}
+        LANGUAGES[lang_code] = {"name": (Locale.parse(lang_code).get_display_name(lang_code) or lang_code).capitalize()}
 
     process_js_files()
     compile_scss()
@@ -99,7 +100,7 @@ async def home():
 
     forwarded_for = request.headers.get('X-Forwarded-For')
     user_ip = forwarded_for.split(',')[0] if forwarded_for else request.remote_addr
-    country = await check_country_with_ip(user_ip)
+    country = await check_country_with_ip(user_ip) if user_ip else None
 
     if not user:
         resp = await requests_api(f'{DISCORD_API_BASE_URL}/users/@me', headers={'Authorization': f'Bearer {token}'})
@@ -113,7 +114,7 @@ async def home():
     else:
         user.country = country
 
-    return await render_template("index.html", user=user, languages=LANGUAGES)
+    return await render_template("index.html", user=user, languages=LANGUAGES, voice=SETTINGS.voice_client_config)
 
 @app.route("/login", methods=["GET"])
 async def login():
@@ -158,6 +159,31 @@ async def set_language(user: User, language = None):
         session["language_code"] = language
     return redirect(url_for('home'))
 
+@app.route("/voice/transcribe", methods=["POST"])
+@login_required
+async def voice_transcribe(user: User):
+    if not (SETTINGS.voice_enable and SETTINGS.voice_stt_url):
+        return jsonify({"error": "Voice recognition server is not configured."}), 404
+
+    files = await request.files
+    audio = files.get("audio")
+    if not audio:
+        return jsonify({"error": "Missing audio file."}), 400
+
+    text = await transcribe_audio(
+        SETTINGS.voice_stt_url,
+        audio.read(),
+        audio.filename or "voice.wav",
+        audio.content_type or "audio/wav",
+        model=SETTINGS.voice_stt_model,
+        language=SETTINGS.voice_language,
+        api_key=SETTINGS.voice_stt_api_key
+    )
+    if text is None:
+        return jsonify({"error": "Voice recognition failed."}), 502
+
+    return jsonify({"text": text})
+
 @app.errorhandler(404)
 async def not_found(error):
     return redirect(url_for("home"))
@@ -175,6 +201,7 @@ async def ws_bot():
         if not check_version(header.get("Client-Version")):
             return await websocket.close(1002, "Version mismatch!")
         
+        # noinspection PyUnresolvedReferences
         await BotPool.create(bot_id, websocket._get_current_object())
         
     except asyncio.CancelledError:
@@ -184,6 +211,7 @@ async def ws_bot():
 @login_required
 async def ws_user(user: User):
     try:
+        # noinspection PyUnresolvedReferences
         await user.connect(websocket._get_current_object())
     except asyncio.CancelledError:
         raise

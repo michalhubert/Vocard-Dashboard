@@ -176,3 +176,5 @@ settings.json
 geolite_db
 static/js
 static/css
+
+.idea/

@@ -81,7 +81,7 @@ class ToastManager {
                 var $alert = $(`
                     <div class="alert-msg ${options.type}">
                         <div class="">
-                            <img class="alert-msg--icon" src="${options.avatarUrl}">
+                            <img class="alert-msg--icon" src="${options.avatarUrl}" alt="">
                             <div class="alert-msg--content">
                                 <p class="alert-msg--words">${options.msg}</p>
                             </div>
@@ -129,7 +129,7 @@ class ToastManager {
     }
 
     showToast(userId, msg) {
-        if (userId == undefined) return;
+        if (userId == null) return;
         this.queue.push({ userId, msg });
         if (!this.isShowing) {
             this.processQueue();
@@ -157,7 +157,7 @@ class ToastManager {
             type: type,
             msg: msg,
             avatarUrl: avatarUrl,
-            timeout: this.queue.length == 0 ? 5000 : 2000,
+            timeout: this.queue.length === 0 ? 5000 : 2000,
             onClose: () => {
                 this.isShowing = false;
                 this.processQueue();
@@ -172,8 +172,8 @@ class Track {
         this.author = object.author;
         this.source = object.source;
         this.identifier = object.identifier;
-        if (object.artworkUrl == undefined) {
-            if (this.source == "youtube") {
+        if (object.artworkUrl == null) {
+            if (this.source === "youtube") {
                 this.artworkUrl = `https://img.youtube.com/vi/${this.identifier}/hqdefault.jpg`;
             } else {
                 this.artworkUrl =
@@ -221,7 +221,7 @@ const methods = {
         let selectedBotId = localStorage.getItem("selectedBot");
         if (
             player.selectedBot == null &&
-            (selectedBotId == undefined || bot.id == selectedBotId)
+            (selectedBotId == null || String(bot.id) === selectedBotId)
         ) {
             player.updateSelectedBot(bot.id);
         }
@@ -239,10 +239,7 @@ const methods = {
             changePage("main-page");
             const uniqueArray = [...new Set(data.data.history)].reverse();
 
-            const tracks = uniqueArray.map((trackId) => {
-                let track = decode(trackId);
-                return track;
-            });
+            const tracks = uniqueArray.map((trackId) => decode(trackId));
 
             const uniqueTracks = [];
             const seenUris = new Set();
@@ -330,7 +327,7 @@ const methods = {
             onEnd: function (evt) {
                 let index = evt.oldIndex + 1;
                 let newIndex = evt.newIndex + 1;
-                if (index != newIndex) {
+                if (index !== newIndex) {
                     player.send({
                         op: "moveTrack",
                         index: evt.oldIndex + 1,
@@ -384,7 +381,7 @@ const methods = {
     trackUpdate: function (player, data) {
         let track = player.updateCurrentQueuePos(data["currentQueuePosition"]);
         player.isPaused = data["isPaused"];
-        if (track?.trackId != data["trackId"]) {
+        if (track?.trackId !== data["trackId"]) {
             player.send({ op: "initPlayer" });
         }
     },
@@ -403,13 +400,14 @@ const methods = {
             })
             .filter((track) => track !== null);
 
-        if (data.tracks.length == 1) {
-            var msg = formatString(
+        let msg;
+        if (data.tracks.length === 1) {
+            msg = formatString(
                 localeTexts.addTrack,
                 decode(data.tracks[0]).title
             );
         } else {
-            var msg = formatString(localeTexts.addMultipleTrack, tracks.length);
+            msg = formatString(localeTexts.addMultipleTrack, tracks.length);
         }
         player.tm.showToast(data["requesterId"], msg);
 
@@ -429,11 +427,11 @@ const methods = {
         let callback = data?.callback;
         let tracks = data?.tracks;
 
-        if (tracks == undefined) return;
+        if (tracks == null) return;
 
         const region = $(`#${callback}`);
 
-        if (callback == "search-result-tracks") {
+        if (callback === "search-result-tracks") {
             $("#result-count").text(`${localeTexts.resultsFoundCount}: ${tracks.length}`);
             region.empty();
             player.searchList = tracks;
@@ -537,8 +535,8 @@ const methods = {
         const secondTrack = player.queue.at(secondTrackIndex);
 
         if (
-            firstTrack.trackId != secondTrackData.trackId ||
-            secondTrack.trackId != firstTrackData.trackId
+            firstTrack.trackId !== secondTrackData.trackId ||
+            secondTrack.trackId !== firstTrackData.trackId
         ) {
             return player.send({ op: "initPlayer" });
         }
@@ -566,7 +564,7 @@ const methods = {
             player.currentQueuePosition + movedTrack?.index,
             1
         )[0];
-        if (element?.trackId != movedTrack?.trackId) {
+        if (element?.trackId !== movedTrack?.trackId) {
             return player.send({ op: "initPlayer" });
         }
         player.queue.splice(player.currentQueuePosition + newIndex, 0, element);
@@ -634,13 +632,14 @@ const methods = {
             player.queue.splice(indexes[i], 1);
         }
 
-        if (indexes.length == 1) {
-            var msg = formatString(
+        let msg;
+        if (indexes.length === 1) {
+            msg = formatString(
                 localeTexts.removeTrack,
                 decode(firstTrackId).title
             );
         } else {
-            var msg = formatString(localeTexts.removeMultiple, indexes.length);
+            msg = formatString(localeTexts.removeMultiple, indexes.length);
         }
         player.tm.showToast(data["requesterId"], msg);
         player.updateCurrentQueuePos();
@@ -691,40 +690,40 @@ const methods = {
     updatePlaylist: function (player, data) {
         let status = data.status;
 
-        if (status == "created") {
+        if (status === "created") {
             player.playlists[data.playlistId] = data.data;
             player.updatePlaylistSelector();
             player.tm.showToast("success", data.msg);
             closeAllModals();
-        } else if (status == "deleted") {
+        } else if (status === "deleted") {
             delete player.playlists[data.playlistId];
             player.updatePlaylistSelector();
             backToLastPage();
             player.tm.showToast("success", data.msg);
             closeAllModals();
-        } else if (status == "renamed") {
+        } else if (status === "renamed") {
             player.playlists[data.playlistId].name = data.name;
             player.updatePlaylistSelector();
             player.tm.showToast("success", data.msg);
             closeAllModals();
-        } else if (status == "error") {
+        } else if (status === "error") {
             let $errorSection = $(
                 `.modal-container .section[data-id="${data.field}"]`
             );
             $errorSection.addClass("error");
             $errorSection.find(".error-msg").text(data.msg);
-        } else if (status == "addTrack") {
+        } else if (status === "addTrack") {
             if (data.playlistId in player.playlists) {
                 player.playlists[data.playlistId]?.tracks.push(data.trackId);
                 player.tm.showToast("success", data.msg);
             }
-        } else if (status == "removeTrack") {
+        } else if (status === "removeTrack") {
             if (data.playlistId in player.playlists) {
                 let trackId =
                     player.playlists[data.playlistId]?.tracks[
                     data.trackPosition
                     ];
-                if (trackId != data.trackId) return;
+                if (trackId !== data.trackId) return;
 
                 player.playlists[data.playlistId]?.tracks.splice(
                     data.trackPosition,
@@ -739,7 +738,7 @@ const methods = {
                 );
                 player.tm.showToast("success", data.msg);
             }
-        } else if (status == "updateInbox") {
+        } else if (status === "updateInbox") {
             if (data?.accept) {
                 player.playlists[data.playlistId] = data.data;
                 player.updatePlaylistSelector();
@@ -958,7 +957,7 @@ const methods = {
                     data["requesterId"],
                     formatString(localeTexts.effects.add, data.filter.tag)
                 );
-            } else if (data?.type == "remove") {
+            } else if (data?.type === "remove") {
                 if (index !== -1) {
                     player.filters.splice(index, 1);
                     player.tm.showToast(
@@ -1130,7 +1129,7 @@ class Player {
     }
 
     isPlaying() {
-        return this.currentTrack != undefined && this.isConnected;
+        return this.currentTrack != null && this.isConnected;
     }
 
     updateSelectedBot(botId) {
@@ -1138,9 +1137,9 @@ class Player {
             $(".bot-selection .selected .left").html(`<p></p>`);
             this.selectedBot = null;
         } else {
-            var botId = botId.toString();
+            botId = botId.toString();
             var bot = this.bots.get(botId);
-            if (bot != undefined) {
+            if (bot != null) {
                 $(".bot-selection .selected .left").html(
                     `<img src="${bot?.avatar}" alt=""><p>${bot?.name}</p>`
                 );
@@ -1157,7 +1156,7 @@ class Player {
     updateSelectedBotView() {
         let $view = $(".bot-selection .options");
         $view.empty();
-        this.bots.forEach((value, key) => {
+        this.bots.forEach((value) => {
             if (value !== this.selectedBot) {
                 $view.append(
                     `<div class="option" data-id="${value.id}">
@@ -1171,7 +1170,7 @@ class Player {
 
     updateFilterView() {
         const filterView = $("#effect-panel");
-        const isEnabled = this.filters.length != 0;
+        const isEnabled = this.filters.length !== 0;
 
         let options = `
             <div class="option ${isEnabled ? "" : "active"}" data-id="none">
@@ -1272,7 +1271,7 @@ class Player {
         const $img = $("#controller-img").clone();
 
         $(".main-grid-container").css("box-shadow", ``);
-        if (this.currentTrack && this.currentTrack.source == "spotify") {
+        if (this.currentTrack && this.currentTrack.source === "spotify") {
             $img[0].crossOrigin = "anonymous";
 
             $img.on("load", function () {
@@ -1280,7 +1279,7 @@ class Player {
                 let adjustedColor = dominantColor;
 
                 if (
-                    localStorage.getItem("theme") != "light" &&
+                    localStorage.getItem("theme") !== "light" &&
                     !isDarkColor(dominantColor)
                 ) {
                     adjustedColor = darkenColor(dominantColor, 0.3); // Darken by 30%
@@ -1403,7 +1402,7 @@ class Player {
                 : "00:00",
             "#play-pause-btn":
                 this.isPaused || !currentTrack ? "play_circle" : "pause_circle",
-            "#repeat-btn": this.repeat == "track" ? "repeat_one" : "repeat",
+            "#repeat-btn": this.repeat === "track" ? "repeat_one" : "repeat",
         };
 
         Object.keys(elementsToUpdate).forEach((selector) => {
@@ -1424,7 +1423,7 @@ class Player {
         }
 
         $("#control-info").css("opacity", currentTrack ? "1" : "0");
-        this.repeat == "off"
+        this.repeat === "off"
             ? $("#repeat-btn").removeClass("active")
             : $("#repeat-btn").addClass("active");
     }

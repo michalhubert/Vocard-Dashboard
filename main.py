@@ -1,6 +1,7 @@
 import asyncio
 import os
 import functools
+import time
 import update
 
 from dotenv import load_dotenv
@@ -45,9 +46,15 @@ from utils import (
 )
 
 SETTINGS: Settings = Settings()
+# Appended to script and stylesheet URLs so browsers fetch fresh files after a restart or update
+ASSET_VERSION: str = str(int(time.time()))
 
 app = Quart(__name__)
 app.secret_key = SETTINGS.secret_key
+
+@app.context_processor
+async def inject_asset_version():
+    return {"asset_version": ASSET_VERSION}
 
 babel = Babel(app)
 babel.init_app(app, locale_selector=get_locale)

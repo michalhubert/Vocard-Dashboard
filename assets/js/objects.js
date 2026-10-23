@@ -427,11 +427,12 @@ const methods = {
         let callback = data?.callback;
         let tracks = data?.tracks;
 
-        if (tracks == null) return;
-
+        // The bot leaves out "tracks" when nothing was found, which voice still needs to report
         if (callback === VOICE_PLAY_CALLBACK) {
-            return handleVoicePlayResult(player, tracks);
+            return handleVoicePlayResult(player, tracks || []);
         }
+
+        if (tracks == null) return;
 
         const region = $(`#${callback}`);
 

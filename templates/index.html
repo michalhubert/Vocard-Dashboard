@@ -6,7 +6,7 @@
 
         <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}" />
 
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard-style.css') }}" />
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard-style.css', v=asset_version) }}" />
 
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
         <link
@@ -228,12 +228,12 @@
             }
         </script>
 
-        <script type="text/javascript" src="{{ url_for('static', filename='js/utils.min.js') }}"></script>
-        <script type="text/javascript" src="{{ url_for('static', filename='js/websocket.min.js') }}"></script>
-        <script type="text/javascript" src="{{ url_for('static', filename='js/objects.min.js') }}"></script>
-        <script type="text/javascript" src="{{ url_for('static', filename='js/voice.min.js') }}"></script>
-        <script type="text/javascript" src="{{ url_for('static', filename='js/action.min.js') }}"></script>
-        <script type="text/javascript" src="{{ url_for('static', filename='js/transformer.min.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/utils.min.js', v=asset_version) }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/websocket.min.js', v=asset_version) }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/objects.min.js', v=asset_version) }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/voice.min.js', v=asset_version) }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/action.min.js', v=asset_version) }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/transformer.min.js', v=asset_version) }}"></script>
 
         <title>Vocard</title>
     </head>

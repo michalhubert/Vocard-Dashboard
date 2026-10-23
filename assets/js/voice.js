@@ -2,8 +2,12 @@
 // server or the browser's built-in Web Speech API) and maps the text onto player actions.
 
 const VOICE_TARGET_SAMPLE_RATE = 16000 // Whisper-style models expect 16kHz mono
-const VOICE_SPEECH_THRESHOLD = 0.015 // RMS level treated as speech
-const VOICE_SILENCE_TIMEOUT = 1200 // Stop recording after this much silence following speech (ms)
+// Speech is detected relative to the background noise (e.g. music playing in the room). The
+// background is the quietest moment of the last VOICE_NOISE_WINDOW, so pauses between words reveal it.
+const VOICE_NOISE_WINDOW = 1500 // How far back to look for the background level (ms)
+const VOICE_MIN_SPEECH_LEVEL = 0.01 // RMS level always required for speech, for quiet rooms
+const VOICE_SPEECH_RATIO = 2.5 // Speech must be this many times louder than the background
+const VOICE_SILENCE_TIMEOUT = 1000 // Stop recording after this much silence following speech (ms)
 const VOICE_NO_SPEECH_TIMEOUT = 5000 // Give up if nothing was said (ms)
 const VOICE_MAX_DURATION = 10000 // Hard limit for a single command (ms)
 const VOICE_PLAY_CALLBACK = "voice-play" // getTracks callback for songs requested by voice
@@ -137,6 +141,8 @@ class VoiceCommand {
         this.player = player
         this.config = config
         this.$btn = $("#toggle-voice-command")
+        this.$label = this.$btn.find(".label")
+        this.defaultLabel = this.$label.text()
         this.state = "idle" // idle | listening | processing
         this.recognition = null
         this.recorder = null
@@ -160,6 +166,16 @@ class VoiceCommand {
     setState(state) {
         this.state = state
         this.$btn.toggleClass("listening", state === "listening").toggleClass("processing", state === "processing")
+        this.$btn.find("span").text(state === "processing" ? "progress_activity" : "mic")
+        this.$label.text(
+            state === "listening" ? localeTexts.voice.listening : state === "processing" ? localeTexts.voice.recognizing : this.defaultLabel
+        )
+        if (state !== "listening") this.setLevel(0)
+    }
+
+    // Grows the ring around the button with the voice, so it is visible that the microphone hears something
+    setLevel(level) {
+        this.$btn[0].style.setProperty("--voice-level", level.toFixed(2))
     }
 
     toggle() {
@@ -225,6 +241,7 @@ class VoiceCommand {
         const processor = context.createScriptProcessor(4096, 1, 1)
         const chunks = []
         const startedAt = performance.now()
+        const levels = [] // { time, level } of every chunk so far
         let lastSpeechAt = null
 
         processor.onaudioprocess = (event) => {
@@ -233,8 +250,19 @@ class VoiceCommand {
 
             let sum = 0
             for (let i = 0; i < input.length; i++) sum += input[i] * input[i]
+            const level = Math.sqrt(sum / input.length)
             const now = performance.now()
-            if (Math.sqrt(sum / input.length) > VOICE_SPEECH_THRESHOLD) lastSpeechAt = now
+
+            levels.push({ time: now, level })
+
+            const noiseFloor = Math.min(...levels.filter((chunk) => now - chunk.time <= VOICE_NOISE_WINDOW).map((chunk) => chunk.level))
+            const threshold = Math.max(VOICE_MIN_SPEECH_LEVEL, noiseFloor * VOICE_SPEECH_RATIO)
+
+            // Look back as well, so speech that started before the background was known still counts
+            const lastLoud = levels.findLast((chunk) => chunk.level > threshold)
+            if (lastLoud && lastLoud.time > (lastSpeechAt ?? -1)) lastSpeechAt = lastLoud.time
+
+            this.setLevel(Math.min(1, level / threshold / 2))
 
             const silenceAfterSpeech = lastSpeechAt && now - lastSpeechAt > VOICE_SILENCE_TIMEOUT
             const nothingSaid = !lastSpeechAt && now - startedAt > VOICE_NO_SPEECH_TIMEOUT

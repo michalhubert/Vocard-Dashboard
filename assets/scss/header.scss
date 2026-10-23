@@ -180,13 +180,9 @@
     }
 }
 
-@keyframes voice-pulse {
-    0%,
-    100% {
-        scale: 1;
-    }
-    50% {
-        scale: 1.15;
+@keyframes voice-spin {
+    to {
+        rotate: 360deg;
     }
 }
 
@@ -238,17 +234,26 @@
             transition-delay: 0.5s;
         }
 
-        &.listening span {
-            color: #d44a4a;
-            animation: voice-pulse 1.2s ease-in-out infinite;
+        &.listening,
+        &.processing {
+            .label {
+                opacity: 1;
+            }
+        }
+
+        &.listening {
+            box-shadow: 0 0 0 calc(0.125rem + var(--voice-level, 0) * 0.5rem) rgba(212, 74, 74, 0.35);
+
+            span {
+                color: #d44a4a;
+            }
         }
 
         &.processing {
             pointer-events: none;
 
             span {
-                opacity: 0.5;
-                animation: voice-pulse 0.6s ease-in-out infinite;
+                animation: voice-spin 1s linear infinite;
             }
         }
     }

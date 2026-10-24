@@ -178,6 +178,9 @@ def check_version(current_version: Optional[str]) -> bool:
     return current_version_tuple >= target_version_tuple
 
 def _check_country_with_ip_sync(address: str) -> Optional[records.Country]:
+    if not os.path.exists(GEODB_PATH):
+        return None
+
     with database.Reader(GEODB_PATH) as reader:
         try:
             response = reader.country(address)
@@ -254,12 +257,17 @@ async def download_geoip_db() -> None:
     if os.path.exists(GEODB_PATH):
         return
     
-    async with aiohttp.ClientSession() as session:
+    # GitHub release downloads redirect to a signed URL whose Location header exceeds aiohttp's 8190 byte default
+    async with aiohttp.ClientSession(max_field_size=32768, max_line_size=32768) as session:
         LOGGER.info("Downloading GeoIP database...")
-        async with session.get(GEODB_URL) as response:
-            if response.status == 200:
-                with open(GEODB_PATH, 'wb') as f:
-                    f.write(await response.read())
-                LOGGER.info("GeoIP database downloaded successfully.")
-            else:
-                LOGGER.error(f"Failed to download database: {response.status}")
+        try:
+            async with session.get(GEODB_URL) as response:
+                if response.status == 200:
+                    data = await response.read()
+                    with open(GEODB_PATH, 'wb') as f:
+                        f.write(data)
+                    LOGGER.info("GeoIP database downloaded successfully.")
+                else:
+                    LOGGER.error(f"Failed to download database: {response.status}")
+        except Exception as e:
+            LOGGER.error(f"Error downloading GeoIP database: {e}")
